@@ -21,24 +21,62 @@
     </div>
     
     <div class="album-actions">
-      <button class="btn btn-primary">Add to Cart</button>
+      <button 
+        :class="['btn', inCart ? 'btn-in-cart' : 'btn-primary']"
+        @click="handleAddToCart"
+        :disabled="inCart"
+      >
+        {{ buttonText }}
+      </button>
       <button class="btn btn-secondary">Preview</button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref, computed, watch } from 'vue'
 import type { Album } from '../types/album'
+import { useCart } from '../composables/useCart'
+
+const ADDED_FEEDBACK_DURATION_MS = 1500
+// SVG placeholder as data URI to avoid external dependency
+const PLACEHOLDER_IMAGE = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300"%3E%3Crect fill="%23667eea" width="300" height="300"/%3E%3Ctext x="50%25" y="50%25" fill="white" font-size="24" text-anchor="middle" dy=".3em"%3EAlbum Cover%3C/text%3E%3C/svg%3E'
 
 interface Props {
   album: Album
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
+
+const { addToCart, isInCart } = useCart()
+
+const showAdded = ref(false)
+
+const inCart = computed(() => isInCart(props.album.id))
+
+const buttonText = computed(() => {
+  if (showAdded.value) return 'Added!'
+  if (inCart.value) return 'In Cart'
+  return 'Add to Cart'
+})
+
+const handleAddToCart = (): void => {
+  if (!inCart.value) {
+    addToCart(props.album)
+    showAdded.value = true
+    setTimeout(() => {
+      showAdded.value = false
+    }, ADDED_FEEDBACK_DURATION_MS)
+  }
+}
+
+watch(() => props.album.id, () => {
+  showAdded.value = false
+})
 
 const handleImageError = (event: Event): void => {
   const target = event.target as HTMLImageElement
-  target.src = 'https://via.placeholder.com/300x300/667eea/white?text=Album+Cover'
+  target.src = PLACEHOLDER_IMAGE
 }
 </script>
 
@@ -165,6 +203,16 @@ const handleImageError = (event: Event): void => {
 .btn-primary:hover {
   background: #5a6fd8;
   transform: translateY(-2px);
+}
+
+.btn-in-cart {
+  background: #2ecc71;
+  color: white;
+  cursor: default;
+}
+
+.btn-in-cart:hover {
+  transform: none;
 }
 
 .btn-secondary {
